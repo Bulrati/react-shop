@@ -1,10 +1,11 @@
-import {useState} from 'react';
+import {useContext, useState} from 'react';
 
 import {createAuthUserWithEmailAndPassword, createUserDocumentFromAuth, signInUserWithEmailAndPassword} from "../../utils/firebase/firebase.utils";
 import FormInput from "../form-input/form-input.component";
 
 import './sign-up-form.styles.scss';
 import Button from "../button/button.component";
+import {UserContext} from "../../contexts/user/user.context";
 
 const SignUpForm = () => {
     const defaultFormFields = {
@@ -16,6 +17,7 @@ const SignUpForm = () => {
 
     const [formFields, setFormFields] = useState(defaultFormFields);
     const {displayName, email, password, confirmPassword} = formFields;
+    const {setCurrentUser} = useContext(UserContext);
 
     const resetFormFields = () => {
          setFormFields(defaultFormFields);
@@ -30,15 +32,24 @@ const SignUpForm = () => {
         }
 
         try {
-            const response = await createAuthUserWithEmailAndPassword(email, password);
-            createUserDocumentFromAuth(response.user, {displayName: displayName})
-            console.log(response);
+            const {user} = await createAuthUserWithEmailAndPassword(email, password);
+            createUserDocumentFromAuth(user, {displayName: displayName})
+            setCurrentUser(user);
             resetFormFields();
         } catch (error) {
-            if (error.code === 'auth/email-already-in-use') {
-                alert('Cannot create user, email already in use');
-            } else {
-                console.log('User creation encountered an error', error);
+            switch (error.code) {
+                case 'auth/email-already-in-use':
+                    alert('Cannot create user, email already in use');
+                    break;
+                case 'auth/invalid-email':
+                    alert('Cannot create user, invalid email');
+                    break;
+                case 'auth/weak-password':
+                    alert('Cannot create user, weak password, at least 6 characters');
+                    break;
+                default:
+                    console.log('User creation encountered an error', error);
+                    break;
             }
         }
     }
